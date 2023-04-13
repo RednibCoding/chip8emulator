@@ -262,8 +262,8 @@ void chip8_CALL_addr(chip8_t* chip, uint16_t addr);
 // 3xkk - SE Vx, byte: Skip next instruction if Vx == `kk`.
 //
 // This function first checks if the value in register Vx matches the byte kk.
-// If it does, it increments the program counter by 2 to skip the next instruction.
-// Otherwise, it simply increments the program counter by 1, causing the interpreter to execute the next instruction as usual.
+// If it does, it increments the program counter by 4 to skip the next instruction.
+// Otherwise, it simply increments the program counter by 2, causing the interpreter to execute the next instruction as usual.
 // Note that the x argument should be the lower nibble of the instruction's first byte, and the kk argument should be the second byte of the instruction.
 // The full instruction is passed to the instruction decoding logic, which extracts the register index (x) and the byte value (kk) and calls this function with the correct arguments.
 void chip8_SE_Vx_byte(chip8_t* chip, uint8_t x, uint8_t kk);
@@ -271,8 +271,8 @@ void chip8_SE_Vx_byte(chip8_t* chip, uint8_t x, uint8_t kk);
 // 4xkk - SNE Vx, byte: Skip next instruction if Vx != `kk`.
 //
 // This function first checks if the value in register Vx does not match the byte `kk`.
-// If it does not match, it increments the program counter by 2 to skip the next instruction.
-// Otherwise, it simply increments the program counter by 1, causing the interpreter to execute the next instruction as usual.
+// If it does not match, it increments the program counter by 4 to skip the next instruction.
+// Otherwise, it simply increments the program counter by 2, causing the interpreter to execute the next instruction as usual.
 // Note that the `x` argument should be the lower nibble of the instruction's first byte, and the `kk` argument should be the second byte of the instruction.
 // The full instruction is passed to the instruction decoding logic, which extracts the register index (`x`) and the byte value (`kk`) and calls this function with the correct arguments.
 void chip8_SNE_Vx_byte(chip8_t* chip, uint8_t x, uint8_t kk);
@@ -280,8 +280,8 @@ void chip8_SNE_Vx_byte(chip8_t* chip, uint8_t x, uint8_t kk);
 // 5xy0 - SE Vx, Vy: Skip next instruction if Vx == Vy.
 //
 // This function first checks if the values in registers Vx and Vy are equal.
-// If they are equal, it increments the program counter by 2 to skip the next instruction.
-// Otherwise, it simply increments the program counter by 1, causing the interpreter to execute the next instruction as usual.
+// If they are equal, it increments the program counter by 4 to skip the next instruction.
+// Otherwise, it simply increments the program counter by 2, causing the interpreter to execute the next instruction as usual.
 // Note that the `x` and `y` arguments should be the lower nibbles of the instruction's first and second bytes, respectively.
 // The full instruction is passed to the instruction decoding logic, which extracts the register indices (`x` and `y`) and calls this function with the correct arguments.
 void chip8_SE_Vx_Vy(chip8_t* chip, uint8_t x, uint8_t y);
@@ -341,7 +341,7 @@ void chip8_ADD_Vx_Vy(chip8_t* chip, uint8_t x, uint8_t y);
 // This function first checks if the value in register Vx is greater than or equal to the value in register Vy.
 // If it is, it sets the VF register to 1. Otherwise, it sets VF to 0.
 // It then subtracts the value in register Vy from the value in register Vx, and stores the result in Vx.
-// Finally, it increments the program counter by 1.
+// Finally, it increments the program counter by 2.
 // Note that the x and y arguments should be the lower nibbles of the instruction's first and second bytes, respectively.
 // The full instruction is passed to the instruction decoding logic, which extracts the register indices and calls this function with the correct arguments.
 void chip8_SUB_Vx_Vy(chip8_t* chip, uint8_t x, uint8_t y);
@@ -371,8 +371,8 @@ void chip8_SHL_Vx(chip8_t* chip, uint8_t x);
 // 9xy0 - SNE Vx, Vy: Skip next instruction if Vx != Vy.
 //
 // This function first checks if the value in register Vx is not equal to the value in register Vy.
-// If they are not equal, it increments the program counter by 2 to skip the next instruction.
-// Otherwise, it simply increments the program counter by 1, causing the interpreter to execute the next instruction as usual.
+// If they are not equal, it increments the program counter by 4 to skip the next instruction.
+// Otherwise, it simply increments the program counter by 2, causing the interpreter to execute the next instruction as usual.
 // Note that the x and y arguments should be the lower nibbles of the instruction's first and second bytes, respectively.
 // The full instruction is passed to the instruction decoding logic, which extracts the register indices (x and y) and calls this function with the correct arguments.
 void chip8_SNE_Vx_Vy(chip8_t* chip, uint8_t x, uint8_t y);
@@ -414,8 +414,8 @@ void chip8_DRW_Vx_Vy_nibble(chip8_t* chip, uint8_t x, uint8_t y, uint8_t height)
 // Ex9E - SKP Vx: Skip next instruction if key with the value of Vx is pressed.
 //
 // This function checks if the key with the value in register Vx is currently pressed.
-// If it is, it increments the program counter by 2 to skip the next instruction.
-// Otherwise, it simply increments the program counter by 1, causing the interpreter to execute the next instruction as usual.
+// If it is, it increments the program counter by 4 to skip the next instruction.
+// Otherwise, it simply increments the program counter by 2, causing the interpreter to execute the next instruction as usual.
 // Note that the x argument should be the lower nibble of the instruction's first byte.
 // The full instruction is passed to the instruction decoding logic, which extracts the register index (x) and calls this function with the correct argument.
 void chip8_SKP_Vx(chip8_t* chip, uint8_t x);
