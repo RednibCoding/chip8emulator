@@ -5,7 +5,7 @@ Chip8 emulator written in c
 ![](readme/screenshot_002.png)
 
 # Documentation
-The code in the chip8.h and chip8.c is documented a lot. You should need no other informations.
+The code in the chip8.h and chip8.c is documented a lot. You shouldn't need any other informations/documentation about chip8.
 
 # Structure
 The implementation is in the chip8.h and chip8.c.
