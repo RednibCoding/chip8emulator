@@ -153,6 +153,9 @@
 #define CHIP8_STACK_SIZE 16
 #define CHIP8_DISPLAY_WIDTH 64
 #define CHIP8_DISPLAY_HEIGHT 32
+#define CHIP8_DISPLAY_BUFFER_SIZE (CHIP8_DISPLAY_WIDTH * CHIP8_DISPLAY_HEIGHT)
+
+
 // Chip 8 programs are loaded at memory address 0x200
 #define CHIP8_PROGRAM_OFFSET 0x200
 // This value can be adjusted based on the desired speed of the emulator. A higher value will result in slower emulation, while a lower value will result in faster emulation.
@@ -168,7 +171,8 @@ typedef struct {
     uint16_t stack[CHIP8_STACK_SIZE];   // Stack (16 levels)
     uint16_t sp;                        // Stack pointer (16-bit)
     uint8_t keypad[16];                 // Keypad state (16 keys)
-    uint8_t display[CHIP8_DISPLAY_WIDTH * CHIP8_DISPLAY_HEIGHT]; // Internal screen buffer (64x32 pixels)
+    uint8_t colorMode;                  // NEW: color mode register if set: color mode on (16 colors), if not set: color mode off (2 colors - monochrome)
+    uint8_t display[CHIP8_DISPLAY_BUFFER_SIZE];
 } chip8_t;
 
 // The chip8_key enum is a list of constants that represent the keys of a Chip-8 keypad.
@@ -299,6 +303,11 @@ void chip8_LD_Vx_byte(chip8_t* chip, uint8_t x, uint8_t kk);
 // Note that the `x` argument should be the lower nibble of the instruction's first byte, and `kk` should be the second byte of the instruction.
 // The full instruction is passed to the instruction decoding logic, which extracts the register index (`x`) and the byte value (`kk`) and calls this function with the correct arguments.
 void chip8_ADD_Vx_byte(chip8_t* chip, uint8_t x, uint8_t kk);
+
+// NEW: Fx1F - SETCLR Vx: Set the color mode based on the value of Vx (0 = off, 1 = on)
+//
+// This functions sets the color mode to on or off depending on what the register Vx
+void chip8_SETCLR_Vx(chip8_t* chip, uint8_t x);
 
 // 8xy0 - LD Vx, Vy: Set Vx = Vy.
 //

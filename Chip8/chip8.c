@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 void chip8_init(chip8_t* chip) {
     // Initialize memory to 0
@@ -62,6 +63,42 @@ bool chip8_load_rom(chip8_t* chip, const char* filename) {
     return true;
 }
 
+// This is just for testing
+bool chip8_load_program_from_hex_string(chip8_t* chip, const char* hex_program_data) {
+    size_t hex_program_size = strlen(hex_program_data);
+
+    if (hex_program_size % 2 != 0) {
+        fprintf(stderr, "Hex program data should have an even number of characters\n");
+        return false;
+    }
+
+    size_t program_size = hex_program_size / 2;
+
+    if (program_size > CHIP8_MEM_SIZE - CHIP8_PROGRAM_OFFSET) {
+        fprintf(stderr, "Program data too large for Chip-8 memory\n");
+        return false;
+    }
+
+    uint8_t* program_buffer = &chip->mem[CHIP8_PROGRAM_OFFSET];
+
+    for (size_t i = 0; i < hex_program_size; i += 2) {
+        if (!isxdigit(hex_program_data[i]) || !isxdigit(hex_program_data[i + 1])) {
+            fprintf(stderr, "Invalid character in hex program data\n");
+            return false;
+        }
+
+        uint8_t byte_value;
+#if defined(_MSC_VER) || defined(__STDC_LIB_EXT1__)
+        sscanf_s(hex_program_data + i, "%2hhx", &byte_value);
+#else
+        sscanf(hex_program_data + i, "%2hhx", &byte_value);
+#endif
+        program_buffer[i / 2] = byte_value;
+    }
+
+    return true;
+}
+
 void chip8_set_key(chip8_t* chip, chip8_key key, uint8_t state) {
     if (key >= CHIP8_KEY_0 && key <= CHIP8_KEY_F) {
         chip->keypad[key] = state;
@@ -70,6 +107,11 @@ void chip8_set_key(chip8_t* chip, chip8_key key, uint8_t state) {
 
 
 void chip8_step(chip8_t* chip) {
+    if (chip->pc < CHIP8_PROGRAM_OFFSET || chip->pc >= CHIP8_MEM_SIZE) {
+        fprintf(stderr, "Program counter out of bounds: 0x%04X\n", chip->pc);
+        return;
+    }
+
     // Fetch the current instruction from memory
     uint16_t opcode = (chip->mem[chip->pc] << 8) | chip->mem[chip->pc + 1];
 
@@ -192,6 +234,8 @@ void chip8_step(chip8_t* chip) {
             break;
         case 0x001E:
             chip8_ADD_I_Vx(chip, (opcode & 0x0F00) >> 8);
+        case 0x001F: // NEW: Fx1F - Set the color mode based on the value of Vx (0 = off, 1 = on)
+            chip8_SETCLR_Vx(chip, (opcode & 0x0F00) >> 8);
             break;
         case 0x0029:
             chip8_LD_F_Vx(chip, (opcode & 0x0F00) >> 8);
@@ -431,6 +475,8 @@ void chip8_RND_Vx_byte(chip8_t* chip, uint8_t x, uint8_t kk) {
     chip->pc += 2;
 }
 
+
+
 // Dxyn - DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
 void chip8_DRW_Vx_Vy_nibble(chip8_t* chip, uint8_t x, uint8_t y, uint8_t height) {
     uint8_t pixel;
@@ -440,26 +486,66 @@ void chip8_DRW_Vx_Vy_nibble(chip8_t* chip, uint8_t x, uint8_t y, uint8_t height)
     // Set VF to 0 (collision not detected)
     chip->V[0xF] = 0;
 
-    // Loop through each row of the sprite
-    for (i = 0; i < height; i++) {
-        // Get the pixel value from memory
-        pixel = chip->mem[index + i];
+    if (chip->colorMode) {
+        // 16-color mode implementation (4 bits per pixel)
 
-        // Loop through each column of the sprite
-        for (j = 0; j < 8; j++) {
-            // Check if the current pixel is on
-            if ((pixel & (0x80 >> j)) != 0) {
-                // Calculate the screen buffer index for the current pixel
-                uint16_t buffer_index = (chip->V[x] + j) + ((chip->V[y] + i) * CHIP8_DISPLAY_WIDTH);
+        // Loop through each row of the sprite
+        for (i = 0; i < height; i++) {
+            // Get the pixel value from memory
+            pixel = chip->mem[index + i];
 
-                // Check if the pixel is already set
-                if (chip->display[buffer_index] == 1) {
-                    // Set VF to 1 (collision detected)
-                    chip->V[0xF] = 1;
+            // Loop through each column of the sprite (4 pixels per byte)
+            for (j = 0; j < 4; j++) {
+                // Extract the color index for the current pixel (4 bits per pixel)
+                uint8_t color_index = (pixel & (0xF0 >> (4 * j))) >> (4 * (3 - j));
+
+                // Calculate the screen buffer index for the current pixel (4 bits per pixel)
+                uint16_t buffer_index = (chip->V[x] + 2 * j) + ((chip->V[y] + i) * CHIP8_DISPLAY_WIDTH);
+
+                // Check if the pixel has a color (color_index > 0)
+                if (color_index > 0) {
+                    uint8_t existing_color = (j % 2 == 0) ? (chip->display[buffer_index] & 0xF0) >> 4 : chip->display[buffer_index] & 0x0F;
+                    // Check if the pixel is already set
+                    if (existing_color != 0) {
+                        // Set VF to 1 (collision detected)
+                        chip->V[0xF] = 1;
+                    }
+
+                    // Set the color index in the display buffer
+                    if (j % 2 == 0) {
+                        chip->display[buffer_index] = (chip->display[buffer_index] & 0x0F) | (color_index << 4);
+                    }
+                    else {
+                        chip->display[buffer_index] = (chip->display[buffer_index] & 0xF0) | color_index;
+                    }
                 }
+            }
+        }
+    }
+    else {
+        // Original Chip-8 implementation (1 bit per pixel)
 
-                // XOR the pixel onto the screen buffer
-                chip->display[buffer_index] ^= 1;
+        // Loop through each row of the sprite
+        for (i = 0; i < height; i++) {
+            // Get the pixel value from memory
+            pixel = chip->mem[index + i];
+
+            // Loop through each column of the sprite
+            for (j = 0; j < 8; j++) {
+                // Check if the current pixel is on
+                if ((pixel & (0x80 >> j)) != 0) {
+                    // Calculate the screen buffer index for the current pixel
+                    uint16_t buffer_index = (chip->V[x] + j) + ((chip->V[y] + i) * CHIP8_DISPLAY_WIDTH);
+
+                    // Check if the pixel is already set
+                    if (chip->display[buffer_index] == 1) {
+                        // Set VF to 1 (collision detected)
+                        chip->V[0xF] = 1;
+                    }
+
+                    // XOR the pixel onto the screen buffer
+                    chip->display[buffer_index] ^= 1;
+                }
             }
         }
     }
@@ -535,6 +621,12 @@ void chip8_LD_ST_Vx(chip8_t* chip, uint8_t x) {
 // Fx1E - ADD I, Vx: Set I = I + Vx.
 void chip8_ADD_I_Vx(chip8_t* chip, uint8_t x) {
     chip->I += chip->V[x];
+    chip->pc += 2;
+}
+
+// NEW: Fx1F - SETCLR Vx: Set the color mode based on the value of Vx (0 = off, 1 = on)
+void chip8_SETCLR_Vx(chip8_t* chip, uint8_t x) {
+    chip->colorMode = chip->V[x] & 1; // Set the color mode based on the least significant bit of Vx
     chip->pc += 2;
 }
 

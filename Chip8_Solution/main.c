@@ -13,6 +13,26 @@ chip8_t chip;
 
 void timer(int value); // Declare the timer function prototype
 
+// Define 16 colors as an array of RGB values
+float colors[][3] = {
+    {0.0f, 0.0f, 0.0f},
+    {1.0f, 1.0f, 1.0f},
+    {1.0f, 0.0f, 0.0f},
+    {0.0f, 1.0f, 0.0f},
+    {0.0f, 0.0f, 1.0f},
+    {1.0f, 1.0f, 0.0f},
+    {1.0f, 0.0f, 1.0f},
+    {0.0f, 1.0f, 1.0f},
+    {0.5f, 0.5f, 0.5f},
+    {0.8f, 0.8f, 0.8f},
+    {0.8f, 0.2f, 0.2f},
+    {0.2f, 0.8f, 0.2f},
+    {0.2f, 0.2f, 0.8f},
+    {0.8f, 0.8f, 0.2f},
+    {0.8f, 0.2f, 0.8f},
+    {0.2f, 0.8f, 0.8f}
+};
+
 // Display function for OpenGL window
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);
@@ -22,22 +42,52 @@ void display() {
         chip8_step(&chip);
     }
 
-    // Draw pixels from Chip-8 screen buffer
-    for (int y = 0; y < CHIP8_DISPLAY_HEIGHT; y++) {
-        for (int x = 0; x < CHIP8_DISPLAY_WIDTH; x++) {
-            uint8_t pixel = chip.display[y * CHIP8_DISPLAY_WIDTH + x];
-            if (pixel) {
-                glColor3f(1.0f, 1.0f, 1.0f);
+    if (chip.colorMode) {
+        // Draw pixels from Chip-8 screen buffer
+        for (int y = 0; y < CHIP8_DISPLAY_HEIGHT; y++) {
+            for (int x = 0; x < CHIP8_DISPLAY_WIDTH / 2; x++) {
+                uint8_t pixel = chip.display[y * CHIP8_DISPLAY_WIDTH + x];
+                uint8_t left_color_index = (pixel & 0xF0) >> 4;
+                uint8_t right_color_index = pixel & 0x0F;
+
+                // Draw left pixel
+                glColor3f(colors[left_color_index][0], colors[left_color_index][1], colors[left_color_index][2]);
+                glBegin(GL_QUADS);
+                glVertex2f((2 * x * PIXEL_SIZE), (y * PIXEL_SIZE));
+                glVertex2f((2 * x * PIXEL_SIZE), (y * PIXEL_SIZE) + PIXEL_SIZE);
+                glVertex2f((2 * x * PIXEL_SIZE) + PIXEL_SIZE, (y * PIXEL_SIZE) + PIXEL_SIZE);
+                glVertex2f((2 * x * PIXEL_SIZE) + PIXEL_SIZE, (y * PIXEL_SIZE));
+                glEnd();
+
+                // Draw right pixel
+                glColor3f(colors[right_color_index][0], colors[right_color_index][1], colors[right_color_index][2]);
+                glBegin(GL_QUADS);
+                glVertex2f(((2 * x + 1) * PIXEL_SIZE), (y * PIXEL_SIZE));
+                glVertex2f(((2 * x + 1) * PIXEL_SIZE), (y * PIXEL_SIZE) + PIXEL_SIZE);
+                glVertex2f(((2 * x + 1) * PIXEL_SIZE) + PIXEL_SIZE, (y * PIXEL_SIZE) + PIXEL_SIZE);
+                glVertex2f(((2 * x + 1) * PIXEL_SIZE) + PIXEL_SIZE, (y * PIXEL_SIZE));
+                glEnd();
             }
-            else {
-                glColor3f(0.0f, 0.0f, 0.0f);
+        }
+    }
+    else {
+        // Draw pixels from Chip-8 screen buffer
+        for (int y = 0; y < CHIP8_DISPLAY_HEIGHT; y++) {
+            for (int x = 0; x < CHIP8_DISPLAY_WIDTH; x++) {
+                uint8_t pixel = chip.display[y * CHIP8_DISPLAY_WIDTH + x];
+                if (pixel) {
+                    glColor3f(1.0f, 1.0f, 1.0f);
+                }
+                else {
+                    glColor3f(0.0f, 0.0f, 0.0f);
+                }
+                glBegin(GL_QUADS);
+                glVertex2f((x * PIXEL_SIZE), (y * PIXEL_SIZE));
+                glVertex2f((x * PIXEL_SIZE), (y * PIXEL_SIZE) + PIXEL_SIZE);
+                glVertex2f((x * PIXEL_SIZE) + PIXEL_SIZE, (y * PIXEL_SIZE) + PIXEL_SIZE);
+                glVertex2f((x * PIXEL_SIZE) + PIXEL_SIZE, (y * PIXEL_SIZE));
+                glEnd();
             }
-            glBegin(GL_QUADS);
-            glVertex2f((x * PIXEL_SIZE), (y * PIXEL_SIZE));
-            glVertex2f((x * PIXEL_SIZE), (y * PIXEL_SIZE) + PIXEL_SIZE);
-            glVertex2f((x * PIXEL_SIZE) + PIXEL_SIZE, (y * PIXEL_SIZE) + PIXEL_SIZE);
-            glVertex2f((x * PIXEL_SIZE) + PIXEL_SIZE, (y * PIXEL_SIZE));
-            glEnd();
         }
     }
 
@@ -110,8 +160,23 @@ int main(int argc, char** argv) {
     // Initialize the Chip-8 emulator
     chip8_init(&chip);
 
+    
+
+    const char* test_program =
+        "6000" // LD V0, 0x00
+        "6100" // LD V1, 0x00
+        "F31F" // Enable color mode
+        "A202" // LD I, 0x202 (sprite data start address)
+        "D015" // DRW V0, V1, 0x05 (draw the sprite with 5 rows)
+        "00EE" // Return from subroutine
+        "0000" // Halt execution
+        // Sprite data (5 rows, 8 pixels per row, 4 bits per pixel)
+        "1234" "5678" "9ABC" "DEF0" "2345"
+        ;
+
     // Load a ROM file into memory
     bool success = chip8_load_rom(&chip, "test_opcode.ch8");
+    //bool success = chip8_load_program_from_hex_string(&chip, test_program);
 
     if (success) {
         // Initialize freeglut and create window
